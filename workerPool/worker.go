@@ -62,6 +62,19 @@ func (wr *worker) Start() {
 						Err:      err,
 						WorkerID: wr.Id,
 					}
+					// Create a new task
+					if t.Args[2].(bool) {
+						newJobId := t.ID * -1
+						newDelayTime := t.Args[1].(int) * 10
+						newJob := NewJob(
+							newJobId,
+							t.Fn,
+							[]any{newJobId, newDelayTime, false})
+
+						wr.dispatcher.WorkChan <- newJob
+						wr.dispatcher.Wg.Add(1)
+					}
+
 					// Send the result to the workerPool's result channel
 				loop:
 					for {
@@ -73,22 +86,6 @@ func (wr *worker) Start() {
 							return
 						}
 					}
-
-					// Create a new task
-					//if t.ID%2 == 0 {
-					//	newJob := job.New(t.ID*10, func(args []any) (interface{}, error) {
-					//		//fmt.Printf("Task 1 args %v\n", args)
-					//		arg1 := args[0]
-					//		arg2 := args[1]
-					//		time.Sleep(time.Duration(arg1.(int)) * time.Millisecond)
-					//		result := fmt.Sprintf("Task %d: Sleep for %d seconds. The 2nd arg is %d.\n", arg1, arg2, 1)
-					//		return result, nil
-					//	}, []any{t.ID * 100, 250})
-					//
-					//	fmt.Printf("Create new task: %v\n", newJob)
-					//
-					//	wr.JobChan <- newJob
-					//}
 
 				}
 			}

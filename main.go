@@ -8,39 +8,44 @@ import (
 
 var (
 	taskFnc = func(args []any) (interface{}, error) {
-		//fmt.Printf("Task 1 args %v\n", args)
-		taskId := args[0]
-		delay := args[1]
-		arg2 := args[2]
-		time.Sleep(time.Duration(delay.(int)) * time.Millisecond)
-		result := fmt.Sprintf("task %d slept for %d ms. Its 2nd arg is %d.\n", taskId, delay, arg2)
+		var result string
+		taskId := args[0].(int)
+		delay := args[1].(int)
+
+		time.Sleep(time.Duration(delay) * time.Millisecond)
+		if args[2] == true {
+			result = fmt.Sprintf("task %d slept for %d ms. create a sub-task %d. \n", taskId, delay, taskId*-1)
+		} else {
+			result = fmt.Sprintf("task %d slept for %d ms. \n", taskId, delay)
+		}
+
 		return result, nil
 	}
 )
 
 func main() {
-	workerNum, taskNum := 10, 500
+	workerNum, taskNum := 3, 5
 	// Create a new workerPool with the specified number of workers
 	wp := workerPool.New(workerNum)
 	// Start the workerPool
 	wp.Run()
 	// Create a collection of tasks
-	for j := 0; j < taskNum; j++ {
+	for j := 1; j <= taskNum; j++ {
 		i := j
-		newJob := workerPool.NewJob(i, taskFnc, []any{i, i * 10, i + 2})
-		wp.Add(newJob)
+		if i%2 == 0 { // create a sub-task for task with even id
+			newJob := workerPool.NewJob(i, taskFnc, []any{i, i * 10, true})
+			wp.Add(newJob)
+		} else {
+			newJob := workerPool.NewJob(i, taskFnc, []any{i, i * 10, false})
+			wp.Add(newJob)
+		}
+
 	}
 	// Wait for all the tasks to be completed. Make sure to call Wait() before calling GetResult()
 	wp.Wait()
 	// Gather the results
-	results := wp.GetResult()
-	resultCnt := 0
-	for result := range results {
+	for result := range wp.GetResult() {
 		fmt.Printf("Task ID: %d, WorkerID: %d, Result: %v, Error: %v\n", result.TaskID, result.WorkerID, result.Value, result.Err)
-		if resultCnt > 30 {
-			break
-		}
-		resultCnt++
 	}
 	// Stop the dispatcher and all the workers
 	wp.Stop()
